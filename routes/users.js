@@ -1,6 +1,7 @@
-var express = require('express');
-var router = express.Router();
-var knex = require('../db')
+const express = require('express');
+const router = express.Router();
+const knex = require('../db');
+const bcrypt = require('bcrypt');
 
 router.post('/signup', function(req, res, next) {
   const errors = []
@@ -16,11 +17,29 @@ router.post('/signup', function(req, res, next) {
   } else {
     knex('users')
       .whereRaw('lower(email) = ?', req.body.email.toLowerCase())
-      .count() // [{count: "0"}]
-      .first() // {count: "0"}
+      .count()
+      .first()
       .then(function (result) {
-         // {count: "0"}
          if (result.count === "0") {
+           const saltRounds = 4;
+           const passwordHash = bcrypt.hashSync(req.body.password, saltRounds);
+
+           knex('users')
+            .insert({
+              email: req.body.email,
+              name: req.body.name,
+              password_hash: passwordHash
+            })
+            .returning('*')
+            .then(function (users) {
+              const user = users[0];
+              res.json({
+                id: user.id,
+                email: user.email,
+                name: user.name
+              })
+            })
+
 
          } else {
           res.status(422).json({
@@ -30,9 +49,9 @@ router.post('/signup', function(req, res, next) {
       })
   }
   // require knex
-  // check email, name, and password are all there
+  // √ check email, name, and password are all there
   //  if not, return an error
-  // check to see if the email already exists in the db
+  // √ check to see if the email already exists in the db
   //  if so, return an error
   // if we're OK
   //  hash password
